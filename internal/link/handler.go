@@ -14,10 +14,8 @@ type LinkHandler struct {
 	*configs.Config
 }
 
-func NewLinkHandler(router *http.ServeMux, deps *LinkHandlerDeps) {
-	linkHandler := &LinkHandler{
-		Config: deps.Config,
-	}
+func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
+	linkHandler := &LinkHandler{}
 
 	router.HandleFunc("GET /{alias}", linkHandler.CreateLink)
 	router.HandleFunc("POST /link", linkHandler.GetLink)
