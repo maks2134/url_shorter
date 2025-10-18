@@ -1,0 +1,13 @@
+services:
+  postgres:
+    container_name: postgrtes-url
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: url
+      POSTGRES_PASSWORD: url_pas
+      POSTGRES_DB: url_db
+      PGDATA: /data/postgres_url
+    volumes:
+      - ./postgres-data_url:/data/postgres
+    ports:
+      - "5432:5432"
