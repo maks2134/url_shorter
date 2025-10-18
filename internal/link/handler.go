@@ -1,40 +1,111 @@
 package link
 
 import (
-	"fmt"
 	"net/http"
-	"shorter-url/configs"
+	"shorter-url/pkg/request"
+	"shorter-url/pkg/response"
+	"strconv"
+
+	"gorm.io/gorm"
 )
 
 type LinkHandlerDeps struct {
-	*configs.Config
+	LinkRepository *LinkRepository
 }
 
 type LinkHandler struct {
-	*configs.Config
+	LinkRepository *LinkRepository
 }
 
 func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
-	linkHandler := &LinkHandler{}
+	linkHandler := &LinkHandler{
+		LinkRepository: deps.LinkRepository,
+	}
 
-	router.HandleFunc("GET /{alias}", linkHandler.CreateLink)
-	router.HandleFunc("POST /link", linkHandler.GetLink)
-	router.HandleFunc("PATCH /link/{id}", linkHandler.UpdateLink)
-	router.HandleFunc("DELETE /link/{id}", linkHandler.DeleteLink)
+	router.HandleFunc("GET /{hash}", linkHandler.Get())
+	router.HandleFunc("POST /link", linkHandler.Create())
+	router.HandleFunc("PATCH /link/{id}", linkHandler.Update())
+	router.HandleFunc("DELETE /link/{id}", linkHandler.Delete())
 }
 
-func (link *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Create Link")
+func (handler *LinkHandler) Get() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hash := r.PathValue("hash")
+
+		link, err := handler.LinkRepository.GetByHash(hash)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		}
+
+		http.Redirect(w, r, link.Url, http.StatusTemporaryRedirect)
+	}
 }
 
-func (link *LinkHandler) GetLink(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Get Link")
+func (handler *LinkHandler) Create() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := request.HandleBody[LinkCreateRequest](&w, r)
+		if err != nil {
+			return
+		}
+
+		link := NewLink(body.Url) //ПЕРЕСМОТРЕТЬ ГЕНЕРАЦИЮ ХЭША НА БОЛЕЕ ОПТИМИЗИРОВАННУЮ
+		for {
+			existedLink, _ := handler.LinkRepository.GetByHash(link.Hash)
+			if existedLink == nil {
+				break
+			}
+			link.generateHash()
+		}
+
+		createdLink, err := handler.LinkRepository.Create(link)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		response.JsonResponse(w, http.StatusCreated, createdLink)
+	}
 }
 
-func (link *LinkHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Delete Link")
+func (handler *LinkHandler) Update() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := request.HandleBody[LinkUpdateRequest](&w, r)
+		if err != nil {
+			return
+		}
+
+		idString := r.PathValue("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		link, err := handler.LinkRepository.Update(&Link{
+			Model: gorm.Model{ID: uint(id)},
+			Url:   body.Url,
+			Hash:  body.Hash,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		response.JsonResponse(w, http.StatusCreated, link)
+	}
 }
 
-func (link *LinkHandler) UpdateLink(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Update Link")
+func (handler *LinkHandler) Delete() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idString := r.PathValue("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		err = handler.LinkRepository.Delete(uint(id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		response.JsonResponse(w, http.StatusNoContent, nil)
+	}
 }
