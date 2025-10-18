@@ -23,6 +23,7 @@ func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	}
 
 	router.HandleFunc("GET /{hash}", linkHandler.Get())
+	router.HandleFunc("GET link/{id}", linkHandler.GetById())
 	router.HandleFunc("POST /link", linkHandler.Create())
 	router.HandleFunc("PATCH /link/{id}", linkHandler.Update())
 	router.HandleFunc("DELETE /link/{id}", linkHandler.Delete())
@@ -38,6 +39,23 @@ func (handler *LinkHandler) Get() http.HandlerFunc {
 		}
 
 		http.Redirect(w, r, link.Url, http.StatusTemporaryRedirect)
+	}
+}
+
+func (handler *LinkHandler) GetById() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idString := r.PathValue("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		link, err := handler.LinkRepository.GetByID(uint(id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		}
+
+		response.JsonResponse(w, http.StatusOK, link)
 	}
 }
 
@@ -99,6 +117,11 @@ func (handler *LinkHandler) Delete() http.HandlerFunc {
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		_, err = handler.LinkRepository.GetByID(uint(id))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
 		}
 
 		err = handler.LinkRepository.Delete(uint(id))
