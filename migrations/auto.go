@@ -1,4 +1,4 @@
-package migrations
+package main
 
 import (
 	"os"
@@ -20,5 +20,8 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&link.Link{})
+	err = db.AutoMigrate(&link.Link{})
+	if err != nil {
+		panic(err)
+	}
 }
