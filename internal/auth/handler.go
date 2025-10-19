@@ -10,15 +10,18 @@ import (
 
 type AuthHandlerDeps struct {
 	*configs.Config
+	*AuthService
 }
 
 type AuthHandler struct {
 	*configs.Config
+	*AuthService
 }
 
 func NewAuthHandler(router *http.ServeMux, deps AuthHandlerDeps) {
 	authHandler := AuthHandler{
-		Config: deps.Config,
+		Config:      deps.Config,
+		AuthService: deps.AuthService,
 	}
 	router.HandleFunc("POST /auth/login", authHandler.Login())
 	router.HandleFunc("POST /auth/register", authHandler.Register())
@@ -32,7 +35,8 @@ func (authHandler *AuthHandler) Login() http.HandlerFunc {
 			return
 		}
 
-		fmt.Println(payload)
+		email, err := authHandler.AuthService.Login(payload.Email, payload.Password)
+		fmt.Println(email, err)
 
 		data := LoginResponse{
 			Token: authHandler.Config.Auth.Secret,
@@ -49,12 +53,6 @@ func (authHandler *AuthHandler) Register() http.HandlerFunc {
 			return
 		}
 
-		fmt.Println(payload)
-
-		data := RegisterResponse{
-			Token: authHandler.Config.Auth.Secret,
-		}
-
-		response.JsonResponse(w, http.StatusOK, data)
+		authHandler.AuthService.Register(payload.Email, payload.Password, payload.Name)
 	}
 }
