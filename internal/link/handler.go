@@ -1,7 +1,9 @@
 package link
 
 import (
+	"fmt"
 	"net/http"
+	"shorter-url/configs"
 	"shorter-url/pkg/middleware"
 	"shorter-url/pkg/request"
 	"shorter-url/pkg/response"
@@ -12,6 +14,7 @@ import (
 
 type LinkHandlerDeps struct {
 	LinkRepository *LinkRepository
+	Config         *configs.Config
 }
 
 type LinkHandler struct {
@@ -26,7 +29,7 @@ func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	router.HandleFunc("GET /{hash}", linkHandler.Get())
 	router.HandleFunc("GET link/{id}", linkHandler.GetById())
 	router.HandleFunc("POST /link", linkHandler.Create())
-	router.Handle("PATCH /link/{id}", middleware.IsAuthed(linkHandler.Update()))
+	router.Handle("PATCH /link/{id}", middleware.IsAuthed(linkHandler.Update(), deps.Config))
 	router.HandleFunc("DELETE /link/{id}", linkHandler.Delete())
 }
 
@@ -91,6 +94,11 @@ func (handler *LinkHandler) Update() http.HandlerFunc {
 		body, err := request.HandleBody[LinkUpdateRequest](&w, r)
 		if err != nil {
 			return
+		}
+
+		email, ok := r.Context().Value(middleware.ContextEmailKey).(string)
+		if ok {
+			fmt.Println(email)
 		}
 
 		idString := r.PathValue("id")

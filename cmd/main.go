@@ -22,7 +22,7 @@ func main() {
 
 	router := http.NewServeMux()
 	auth.NewAuthHandler(router, auth.AuthHandlerDeps{Config: conf, AuthService: authService})
-	link.NewLinkHandler(router, link.LinkHandlerDeps{LinkRepository: linkRepo})
+	link.NewLinkHandler(router, link.LinkHandlerDeps{LinkRepository: linkRepo, Config: conf})
 
 	middlewareStack := middleware.Chain(middleware.CORS, middleware.Logging)
 
