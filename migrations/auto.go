@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"shorter-url/internal/link"
+	"shorter-url/internal/user"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
@@ -20,7 +21,7 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	err = db.AutoMigrate(&link.Link{})
+	err = db.AutoMigrate(&link.Link{}, &user.User{})
 	if err != nil {
 		panic(err)
 	}
