@@ -20,11 +20,17 @@ func main() {
 	auth.NewAuthHandler(router, auth.AuthHandlerDeps{Config: conf})
 	link.NewLinkHandler(router, link.LinkHandlerDeps{LinkRepository: linkRepo})
 
+	middlewareStack := middleware.Chain(middleware.CORS, middleware.LoggingMiddleware)
+
 	server := http.Server{
 		Addr:    ":8081",
-		Handler: middleware.CORS(middleware.LoggingMiddleware(router)),
+		Handler: middlewareStack(router),
 	}
 
 	fmt.Println("Serve is listening on port 8081")
-	server.ListenAndServe()
+	err := server.ListenAndServe()
+	if err != nil {
+		panic(err)
+	}
+
 }
