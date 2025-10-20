@@ -31,6 +31,7 @@ func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	router.HandleFunc("POST /link", linkHandler.Create())
 	router.Handle("PATCH /link/{id}", middleware.IsAuthed(linkHandler.Update(), deps.Config))
 	router.HandleFunc("DELETE /link/{id}", linkHandler.Delete())
+	router.HandleFunc("GET /link", middleware.IsAuthed(linkHandler.GetAll(), deps.Config))
 }
 
 func (handler *LinkHandler) Get() http.HandlerFunc {
@@ -139,5 +140,15 @@ func (handler *LinkHandler) Delete() http.HandlerFunc {
 		}
 
 		response.JsonResponse(w, http.StatusNoContent, nil)
+	}
+}
+
+func (handler *LinkHandler) GetAll() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 }
