@@ -70,7 +70,7 @@ func (repo *LinkRepository) Count() int64 {
 	return count
 }
 
-func (repo *LinkRepository) GetLinks(limit, offset int) []Link {
+func (repo *LinkRepository) GetAll(limit, offset int) []Link {
 	var links []Link
 	repo.Database.Table("links").
 		Where("deleted_at IS NULL").

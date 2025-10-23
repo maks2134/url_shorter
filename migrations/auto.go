@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"shorter-url/internal/link"
+	"shorter-url/internal/stat"
 	"shorter-url/internal/user"
 
 	"github.com/joho/godotenv"
@@ -21,7 +22,7 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	err = db.AutoMigrate(&link.Link{}, &user.User{})
+	err = db.AutoMigrate(&link.Link{}, &user.User{}, stat.Stat{})
 	if err != nil {
 		panic(err)
 	}

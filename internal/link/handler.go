@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"shorter-url/configs"
+	"shorter-url/pkg/di"
 	"shorter-url/pkg/middleware"
 	"shorter-url/pkg/request"
 	"shorter-url/pkg/response"
@@ -13,17 +14,20 @@ import (
 )
 
 type LinkHandlerDeps struct {
-	LinkRepository *LinkRepository
-	Config         *configs.Config
+	LinkRepository  *LinkRepository
+	StatsRepository di.IStatRepository
+	Config          *configs.Config
 }
 
 type LinkHandler struct {
-	LinkRepository *LinkRepository
+	LinkRepository  *LinkRepository
+	StatsRepository di.IStatRepository
 }
 
 func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	linkHandler := &LinkHandler{
-		LinkRepository: deps.LinkRepository,
+		LinkRepository:  deps.LinkRepository,
+		StatsRepository: deps.StatsRepository,
 	}
 
 	router.HandleFunc("GET /{hash}", linkHandler.Get())
@@ -31,7 +35,7 @@ func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	router.HandleFunc("POST /link", linkHandler.Create())
 	router.Handle("PATCH /link/{id}", middleware.IsAuthed(linkHandler.Update(), deps.Config))
 	router.HandleFunc("DELETE /link/{id}", linkHandler.Delete())
-	router.HandleFunc("GET /link", middleware.IsAuthed(linkHandler.GetAll(), deps.Config))
+	router.Handle("GET /link", middleware.IsAuthed(linkHandler.GetAll(), deps.Config))
 }
 
 func (handler *LinkHandler) Get() http.HandlerFunc {
@@ -42,6 +46,8 @@ func (handler *LinkHandler) Get() http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		}
+
+		handler.StatsRepository.AddClick(link.ID)
 
 		http.Redirect(w, r, link.Url, http.StatusTemporaryRedirect)
 	}
@@ -147,8 +153,22 @@ func (handler *LinkHandler) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid limit", http.StatusBadRequest)
 			return
 		}
+
+		offset, err := strconv.Atoi(r.URL.Query().Get("offset"))
+		if err != nil {
+			http.Error(w, "Invalid offset", http.StatusBadRequest)
+			return
+		}
+
+		links := handler.LinkRepository.GetAll(limit, offset)
+		count := handler.LinkRepository.Count()
+
+		response.JsonResponse(w, 200, GetAllLinkResponse{
+			Links: links,
+			Count: count,
+		})
 	}
 }
