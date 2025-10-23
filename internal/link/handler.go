@@ -31,10 +31,10 @@ func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	}
 
 	router.HandleFunc("GET /{hash}", linkHandler.Get())
-	router.HandleFunc("GET link/{id}", linkHandler.GetById())
-	router.HandleFunc("POST /link", linkHandler.Create())
+	router.Handle("GET link/{id}", middleware.IsAuthed(linkHandler.GetById(), deps.Config))
+	router.Handle("POST /link", middleware.IsAuthed(linkHandler.Create(), deps.Config))
 	router.Handle("PATCH /link/{id}", middleware.IsAuthed(linkHandler.Update(), deps.Config))
-	router.HandleFunc("DELETE /link/{id}", linkHandler.Delete())
+	router.Handle("DELETE /link/{id}", middleware.IsAuthed(linkHandler.Delete(), deps.Config))
 	router.Handle("GET /link", middleware.IsAuthed(linkHandler.GetAll(), deps.Config))
 }
 
