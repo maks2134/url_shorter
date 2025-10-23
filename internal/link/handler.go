@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"shorter-url/configs"
-	"shorter-url/pkg/di"
+	"shorter-url/pkg/event"
 	"shorter-url/pkg/middleware"
 	"shorter-url/pkg/request"
 	"shorter-url/pkg/response"
@@ -14,20 +14,20 @@ import (
 )
 
 type LinkHandlerDeps struct {
-	LinkRepository  *LinkRepository
-	StatsRepository di.IStatRepository
-	Config          *configs.Config
+	LinkRepository *LinkRepository
+	EventBus       *event.EventBus
+	Config         *configs.Config
 }
 
 type LinkHandler struct {
-	LinkRepository  *LinkRepository
-	StatsRepository di.IStatRepository
+	LinkRepository *LinkRepository
+	EventBus       *event.EventBus
 }
 
 func NewLinkHandler(router *http.ServeMux, deps LinkHandlerDeps) {
 	linkHandler := &LinkHandler{
-		LinkRepository:  deps.LinkRepository,
-		StatsRepository: deps.StatsRepository,
+		LinkRepository: deps.LinkRepository,
+		EventBus:       deps.EventBus,
 	}
 
 	router.HandleFunc("GET /{hash}", linkHandler.Get())
@@ -47,7 +47,7 @@ func (handler *LinkHandler) Get() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		}
 
-		handler.StatsRepository.AddClick(link.ID)
+		//go handler.StatsRepository.AddClick(link.ID)
 
 		http.Redirect(w, r, link.Url, http.StatusTemporaryRedirect)
 	}
@@ -77,7 +77,7 @@ func (handler *LinkHandler) Create() http.HandlerFunc {
 			return
 		}
 
-		link := NewLink(body.Url) //ПЕРЕСМОТРЕТЬ ГЕНЕРАЦИЮ ХЭША НА БОЛЕЕ ОПТИМИЗИРОВАННУЮ
+		link := NewLink(body.Url)
 		for {
 			existedLink, _ := handler.LinkRepository.GetByHash(link.Hash)
 			if existedLink == nil {
