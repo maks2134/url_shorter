@@ -13,7 +13,7 @@ import (
 	"shorter-url/pkg/middleware"
 )
 
-func main() {
+func App() http.Handler {
 	conf := configs.LoadConfig()
 	database := db.NewDb(conf)
 	router := http.NewServeMux()
@@ -33,14 +33,20 @@ func main() {
 	link.NewLinkHandler(router, link.LinkHandlerDeps{LinkRepository: linkRepo, Config: conf, EventBus: eventBus})
 	stat.NewStatHandler(router, stat.StatHandlerDeps{StatRepository: statRepo, Config: conf})
 
+	go statService.AddClick()
+
 	middlewareStack := middleware.Chain(middleware.CORS, middleware.Logging)
+
+	return middlewareStack(router)
+}
+
+func main() {
+	app := App()
 
 	server := http.Server{
 		Addr:    ":8081",
-		Handler: middlewareStack(router),
+		Handler: app,
 	}
-
-	go statService.AddClick()
 
 	fmt.Println("Serve is listening on port 8081")
 	err := server.ListenAndServe()
