@@ -1,16 +1,16 @@
 package stat
 
 import (
-	"fmt"
 	"net/http"
 	"shorter-url/configs"
 	"shorter-url/pkg/middleware"
+	"shorter-url/pkg/response"
 	"time"
 )
 
 const (
-	FiltereByDay   = "day"
-	FiltereByMonth = "month"
+	GroupByDay   = "day"
+	GroupByMonth = "month"
 )
 
 type StatHandlerDeps struct {
@@ -32,23 +32,37 @@ func NewStatHandler(router *http.ServeMux, deps StatHandlerDeps) {
 
 func (handler *StatHandler) GetStat() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		from, err := time.Parse("2006-01-02", r.URL.Query().Get("from"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		fromStr := r.URL.Query().Get("from")
+		toStr := r.URL.Query().Get("to")
+
+		if fromStr == "" {
+			http.Error(w, "Missing 'from' parameter", http.StatusBadRequest)
+			return
+		}
+		if toStr == "" {
+			http.Error(w, "Missing 'to' parameter", http.StatusBadRequest)
 			return
 		}
 
-		to, err := time.Parse("2006-01-02", r.URL.Query().Get("to"))
+		from, err := time.Parse("2006-01-02", fromStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid 'from' date: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		to, err := time.Parse("2006-01-02", toStr)
+		if err != nil {
+			http.Error(w, "Invalid 'to' date: "+err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		by := r.URL.Query().Get("by")
-		if by != FiltereByDay && by != FiltereByMonth {
+		if by != GroupByDay && by != GroupByMonth {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
 
-		fmt.Println(from, to, by)
+		stats := handler.StatRepository.GetStats(by, from, to)
+		response.JsonResponse(w, 200, stats)
 	}
 }
