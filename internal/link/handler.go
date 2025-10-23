@@ -47,7 +47,10 @@ func (handler *LinkHandler) Get() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		}
 
-		//go handler.StatsRepository.AddClick(link.ID)
+		go handler.EventBus.Publish(event.Event{
+			Type: event.EventLinkVisited,
+			Data: link.ID,
+		})
 
 		http.Redirect(w, r, link.Url, http.StatusTemporaryRedirect)
 	}

@@ -6,6 +6,7 @@ import (
 	"shorter-url/configs"
 	"shorter-url/internal/auth"
 	"shorter-url/internal/link"
+	"shorter-url/internal/stat"
 	"shorter-url/internal/user"
 	"shorter-url/pkg/db"
 	"shorter-url/pkg/event"
@@ -20,12 +21,17 @@ func main() {
 
 	linkRepo := link.NewLinkRepository(database)
 	userRepo := user.NewUserRepository(database)
-	//statRepo := stat.NewStatRepository(database)
+	statRepo := stat.NewStatRepository(database)
 
 	authService := auth.NewAuthService(userRepo)
+	statService := stat.NewStatService(&stat.StatServiceDeps{
+		EventBus:       eventBus,
+		StatRepository: statRepo,
+	})
 
 	auth.NewAuthHandler(router, auth.AuthHandlerDeps{Config: conf, AuthService: authService})
 	link.NewLinkHandler(router, link.LinkHandlerDeps{LinkRepository: linkRepo, Config: conf, EventBus: eventBus})
+	stat.NewStatHandler(router, stat.StatHandlerDeps{StatRepository: statRepo, Config: conf})
 
 	middlewareStack := middleware.Chain(middleware.CORS, middleware.Logging)
 
@@ -33,6 +39,8 @@ func main() {
 		Addr:    ":8081",
 		Handler: middlewareStack(router),
 	}
+
+	go statService.AddClick()
 
 	fmt.Println("Serve is listening on port 8081")
 	err := server.ListenAndServe()
